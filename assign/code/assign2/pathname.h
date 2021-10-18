@@ -10,7 +10,4 @@
  */
 int pathname_lookup(struct unixfilesystem *fs, const char *pathname);
 
-int pathname_lookup_helper(struct unixfilesystem *fs, const int dirinumber,
-                           char *tok, struct direntv6 *dirEnt);
-
 #endif // _PATHNAME_H_
