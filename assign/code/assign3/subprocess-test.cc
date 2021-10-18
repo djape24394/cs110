@@ -5,10 +5,8 @@
  */
 
 #include "subprocess.h"
-#include <assert.h>
 #include <iostream>
 #include <fstream>
-#include <signal.h>
 #include <string>
 #include <sys/wait.h>
 #include <ext/stdio_filebuf.h>
@@ -66,67 +64,13 @@ static void waitForChildProcess(pid_t pid) {
  * Serves as the entry point for for the unit test.
  */
 const string kSortExecutable = "/usr/bin/sort";
-char *argv[] = {const_cast<char *>(kSortExecutable.c_str()), NULL};
-
-static void supplyAndIngestTest() {
-  subprocess_t child = subprocess(argv, true, true);
-  assert(child.pid > 0);
-  assert(child.supplyfd > 0);
-  assert(child.ingestfd > 0);
-  publishWordsToChild(child.supplyfd);
-  ingestAndPublishWords(child.ingestfd);
-  waitForChildProcess(child.pid);
-}
-
-static void supplyAndNoIngestTest() {
-  subprocess_t child = subprocess(argv, true, false);
-  assert(child.pid > 0);
-  assert(child.supplyfd > 0);
-  assert(child.ingestfd == kNotInUse);
-  publishWordsToChild(child.supplyfd);
-  waitForChildProcess(child.pid);
-}
-
-static void noSupplyAndIngestTest() {
-  subprocess_t sp = subprocess(argv, false, true);
-  assert(sp.pid > 0);
-  assert(sp.ingestfd > 0);
-  assert(sp.supplyfd == kNotInUse);
-  kill(sp.pid, SIGTERM);
-  waitForChildProcess(sp.pid);
-}
-
-static void noSupplyAndNoIngestTest() {
-  subprocess_t child = subprocess(argv, false, false);
-  assert(child.pid > 0);
-  assert(child.ingestfd == kNotInUse);
-  assert(child.supplyfd == kNotInUse);
-  kill(child.pid, SIGTERM);
-  waitForChildProcess(child.pid);
-}
-
-void handler(int sig) {
-  kill(waitpid(sig, NULL, 0), SIGCONT);
-}
-
-static void supplyFdCloseTest() {
-  // Use a sig handler because the subprocess usually halts too late
-  signal(SIGCHLD, handler);
-  const string exec = "./factor.py";
-  char* argv[] = {const_cast<char *>(exec.c_str()), "--self-halting", NULL};
-  subprocess_t child = subprocess(argv, true, false);
-  cout << "kill sent" << endl;
-  assert(close(child.supplyfd) == 0);
-  waitForChildProcess(child.pid);
-}
-
 int main(int argc, char *argv[]) {
   try {
-    supplyAndIngestTest();
-    supplyAndNoIngestTest();
-    noSupplyAndIngestTest();
-    noSupplyAndNoIngestTest();
-    supplyFdCloseTest();
+    char *argv[] = {const_cast<char *>(kSortExecutable.c_str()), NULL};
+    subprocess_t child = subprocess(argv, true, true);
+    publishWordsToChild(child.supplyfd);
+    ingestAndPublishWords(child.ingestfd);
+    waitForChildProcess(child.pid);
     return 0;
   } catch (const SubprocessException& se) {
     cerr << "Problem encountered while spawning second process to run \"" << kSortExecutable << "\"." << endl;
