@@ -7,7 +7,6 @@ CXX = /usr/bin/g++-5
 NA_LIB_SRC = news-aggregator.cc \
 	     log.cc \
 	     utils.cc \
-	     semaphore.cc \
 	     stream-tokenizer.cc \
 	     rss-feed.cc \
 	     rss-feed-list.cc \
@@ -17,10 +16,10 @@ NA_LIB_SRC = news-aggregator.cc \
 WARNINGS = -Wall -pedantic
 DEPS = -MMD -MF $(@:.o=.d)
 DEFINES = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD
-INCLUDES = -I/usr/local/include -I/usr/include/libxml2 -I/usr/include/boost
+INCLUDES = -I/usr/local/include -I/usr/include/libxml2
 
 CXXFLAGS = -g $(WARNINGS) -O0 -std=c++0x $(DEPS) $(DEFINES) $(INCLUDES)
-LDFLAGS = -lm -lxml2 -L/usr/local/lib -pthread -L/usr/include -lboost_system -lboost_thread
+LDFLAGS = -lm -lxml2 -L/usr/local/lib -pthread
 # LDFLAGS = -lm -lxml2 -L/usr/local/lib -lrand -lthreads -pthread
 
 NA_LIB_OBJ = $(patsubst %.cc,%.o,$(patsubst %.S,%.o,$(NA_LIB_SRC)))
