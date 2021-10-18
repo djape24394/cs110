@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include "thread-pool.h"
-#include <thread>
+#include "thread-utils.h"
 #include "ostreamlock.h"
 using namespace std;
 
@@ -18,7 +18,7 @@ static void simpleTest() {
     pool.schedule([id] {
       cout << oslock << "Thread (ID: " << id << ") has started." << endl << osunlock;
       size_t sleepTime = (id % 3) * 10;
-      this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+      sleep_for(sleepTime);
       cout << oslock << "Thread (ID: " << id << ") has finished." << endl << osunlock;
     });
   }
