@@ -13,7 +13,7 @@ using namespace std;
 static const string kWhiteSpaceDelimiters = " \r\n\t";
 static const string kProtocolPrefix = "http://";
 static const unsigned short kDefaultPort = 80;
-void HTTPRequest::ingestRequestLine(istream& instream, bool isUsingProxy) throw (HTTPBadRequestException) {
+void HTTPRequest::ingestRequestLine(istream& instream) throw (HTTPBadRequestException) {
   getline(instream, requestLine);
   if (instream.fail()) {
     throw HTTPBadRequestException("First line of request could not be read.");
@@ -24,8 +24,7 @@ void HTTPRequest::ingestRequestLine(istream& instream, bool isUsingProxy) throw 
   iss >> method >> url >> protocol;
   server = url;
   size_t pos = server.find(kProtocolPrefix);
-  if (pos != string::npos)
-    server.erase(0, kProtocolPrefix.size());
+  server.erase(0, kProtocolPrefix.size());
   pos = server.find('/');
   if (pos == string::npos) {
     // url came in as something like http://www.google.com, without the trailing /
@@ -36,10 +35,6 @@ void HTTPRequest::ingestRequestLine(istream& instream, bool isUsingProxy) throw 
     path = server.substr(pos);
     server.erase(pos);
   }
-
-  // revert back the url if indeed using proxy
-  if (isUsingProxy) path = url;
-
   port = kDefaultPort;
   pos = server.find(':');
   if (pos == string::npos) return;

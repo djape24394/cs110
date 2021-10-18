@@ -36,7 +36,7 @@
 #include "string-utils.h"
 using namespace std;
 
-HTTPCache::HTTPCache(): maxAge(-1), ms(numMutex) {
+HTTPCache::HTTPCache(): maxAge(-1) {
   cacheDirectory = getCacheDirectory();
   ensureDirectoryExists(cacheDirectory);
 }
