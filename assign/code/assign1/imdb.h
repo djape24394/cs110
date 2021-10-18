@@ -50,9 +50,6 @@ class imdb {
   
   bool getCredits(const std::string& player, std::vector<film>& films) const;
 
-  // Helper method to get a player string given some offset
-  const std::string getPlayer(int offset) const;
-
 /**
  * Method: getCast
  * ---------------
@@ -71,8 +68,6 @@ class imdb {
  */
 
   bool getCast(const film& movie, std::vector<std::string>& players) const;
-
-  const film getFilm(int offset) const;
 
 /**
  * Destructor: ~imdb
