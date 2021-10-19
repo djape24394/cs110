@@ -1,51 +1,91 @@
 #include <vector>
 #include <iostream>
-#include <set>
 #include <queue>
+#include <unordered_map>
+#include <unordered_set>
+#include <functional>
 #include "imdb.h"
 #include "path.h"
 using namespace std;
 
+struct ConnectionHash
+{
+  std::size_t operator()(const path::connection& cn)const
+  {
+    const std::hash<std::string> hs; 
+    return hs(cn.movie.title) ^ cn.movie.year ^ hs(cn.player);
+  }
+};
+
+
+struct ConnectionEqual
+{
+  bool operator()(const path::connection& cn1, const path::connection& cn2)const
+  {
+    return cn1.movie == cn2.movie && cn1.player == cn2.player;
+  }
+};
+
+struct FilmHash
+{
+  std::size_t operator()(const film& f)const
+  {
+    const std::hash<std::string> hs; 
+    return hs(f.title) ^ f.year;
+  }
+};
+
+path create_path(const string& actor1, path::connection &last_connection, unordered_map<path::connection, path::connection, ConnectionHash, ConnectionEqual> &parent)
+{
+  path pth(last_connection.player);
+  
+  while(last_connection.player != actor1)
+  {
+    path::connection next_connection = parent[last_connection];
+    pth.addConnection(last_connection.movie, next_connection.player);
+    last_connection = std::move(next_connection);
+  }
+  pth.reverse();
+  return pth;
+}
+
 path getShortestPathBetweenActors(const string& actor1, const string& actor2, const imdb& db)
 {
-  set<film> visited_movies;
-  set<string> visited_actors;
-  queue<path> paths_queue;
-  paths_queue.push(path(actor1));
+  unordered_set<film, FilmHash> visited_movies;
+  unordered_set<string> visited_actors;
+  unordered_map<path::connection, path::connection, ConnectionHash, ConnectionEqual> parent;
+  queue<path::connection> paths_queue;
+  paths_queue.push(path::connection(film(), actor1));
+  visited_actors.insert(actor1);
   while(!paths_queue.empty())
   {
-    auto pth = paths_queue.front();
+    auto q_conn = paths_queue.front();
     paths_queue.pop();
-    const string& last_actor = pth.getLastPlayer();
-    if(last_actor == actor2)
+    if(q_conn.player == actor2)
     {
-      return pth;
-    }else if(pth.getLength() >= 6)
-    {
-      return path(actor1);
+      return create_path(actor1, q_conn, parent);
     }
     vector<film> last_actor_movies{};
-    db.getCredits(last_actor, last_actor_movies);
+    db.getCredits(q_conn.player, last_actor_movies);
     for(const film& movie: last_actor_movies)
     {
-      if(!visited_movies.contains(movie))
+      if(visited_movies.find(movie) == visited_movies.end())
       {
         visited_movies.insert(movie);
         vector<string> movie_actors{};
         db.getCast(movie, movie_actors);
         for(const string& actor: movie_actors)
         {
-          if(!visited_actors.contains(actor))
+          if(visited_actors.find(actor) == visited_actors.end())
           {
             visited_actors.insert(actor);
-            pth.addConnection(movie, actor);
-            paths_queue.push(pth);
-            pth.undoConnection();
+            path::connection cn(movie, actor);
+            paths_queue.push(cn);
+            parent[cn] = q_conn;
           }
         }
       }
     }
-
   }
   return path(actor1);
 }

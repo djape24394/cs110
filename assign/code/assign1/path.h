@@ -105,11 +105,6 @@ class path {
    */
   void reverse();
   
- private:
-  // private struct definition... no one else uses it, so I define it internally
-  // if you think about it, the existence of this struct is really an implementation detail,
-  // so its very definition should be private, right?
-
   struct connection {
     film movie;
     std::string player;
@@ -117,8 +112,14 @@ class path {
     // convenience struct with constructors.. 
     connection() {}
     connection(const film& movie, const std::string& player) : movie(movie), player(player) {}
-  };
+ };
   
+ private:
+  // private struct definition... no one else uses it, so I define it internally
+  // if you think about it, the existence of this struct is really an implementation detail,
+  // so its very definition should be private, right?
+
+
   std::string startPlayer;
   std::vector<connection> links;
 };
