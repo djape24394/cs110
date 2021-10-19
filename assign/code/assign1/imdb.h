@@ -97,4 +97,13 @@ class imdb {
   imdb(const imdb& original) = delete;
   imdb& operator=(const imdb& rhs) = delete;
   imdb& operator=(const imdb& rhs) const = delete;
+
+  film getMovieFromOffset(int movie_offset)const;
+  std::string getActorFromOffset(int actor_offset)const;
+
+  std::pair<int, const int*> getActorMoviesData(int actor_offset, const std::string& actor)const;
+  std::pair<int, const int*> getMovieActorsData(int movie_offset, const film& movie)const;
+
+  std::pair<int, const int*> getArrayDataFromPointers(int relative_offset, const char* p_data)const;
+
 };
