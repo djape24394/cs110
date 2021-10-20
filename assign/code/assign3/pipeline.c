@@ -7,6 +7,7 @@
 #include "pipeline.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <errno.h>
 
 void pipeline(char *argv1[], char *argv2[], int pids[]) {
