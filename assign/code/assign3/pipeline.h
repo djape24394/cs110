@@ -36,6 +36,6 @@
  * of the second process.
  */
 
-void pipeline(char *argv1[], char *argv2[], pid_t pids[]);
+void pipeline(char *argv1[], char *argv2[], int pids[]);
 
 #endif
