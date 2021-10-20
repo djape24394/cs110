@@ -89,4 +89,4 @@ struct subprocess_t {
  *   supplyChildInput: true if the parent process would like to pipe content to the new process's stdin, false otherwise
  *   ingestChildOutput: true if the parent would like the child's stdout to be pushed to the parent, false otheriwse
  */
-subprocess_t subprocess(char *argv[], bool supplyChildInput, bool ingestChildOutput) throw (SubprocessException);
+subprocess_t subprocess(char *argv[], bool supplyChildInput, bool ingestChildOutput);

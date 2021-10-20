@@ -67,10 +67,31 @@ const string kSortExecutable = "/usr/bin/sort";
 int main(int argc, char *argv[]) {
   try {
     char *argv[] = {const_cast<char *>(kSortExecutable.c_str()), NULL};
+    // true, true
     subprocess_t child = subprocess(argv, true, true);
     publishWordsToChild(child.supplyfd);
     ingestAndPublishWords(child.ingestfd);
     waitForChildProcess(child.pid);
+
+    // true, false
+    child = subprocess(argv, true, false);
+    publishWordsToChild(child.supplyfd);
+    ingestAndPublishWords(child.ingestfd);
+    waitForChildProcess(child.pid);
+
+    // true, false
+    std::cout << "Write some words separated in new line for sort, finish with ctrl+d\n";
+    child = subprocess(argv, false, true);
+    publishWordsToChild(child.supplyfd);
+    ingestAndPublishWords(child.ingestfd);
+    waitForChildProcess(child.pid);
+
+    std::cout << "Write some words separated in new line for sort, finish with ctrl+d\n";
+    child = subprocess(argv, false, false);
+    publishWordsToChild(child.supplyfd);
+    ingestAndPublishWords(child.ingestfd);
+    waitForChildProcess(child.pid);
+
     return 0;
   } catch (const SubprocessException& se) {
     cerr << "Problem encountered while spawning second process to run \"" << kSortExecutable << "\"." << endl;
