@@ -1,15 +1,19 @@
 /**
  * File: news-aggregator.h
  * -----------------------
- * Defines the NewsAggregator class.  As opposed to your Assignment 5
- * version, this one relies on the services of two ThreadPools to
- * limit and *recycle* a small number of threads.
+ * Defines the NewsAggregator class.  While it is smart enough to limit the number of threads that
+ * can exist at any one time, it does not try to conserve threads by pooling or reusing them.
+ * Assignment 6 will revisit this same exact program, where you'll reimplement the NewsAggregator
+ * class to reuse threads instead of spawning new ones for every download.
  */
 
 #pragma once
 #include <string>
+#include <unordered_set>
 #include "log.h"
 #include "rss-index.h"
+#include "semaphore.h"
+#include "thread-pool.h"
 
 class NewsAggregator {
   
@@ -58,8 +62,11 @@ class NewsAggregator {
   NewsAggregatorLog log;
   std::string rssFeedListURI;
   RSSIndex index;
+  std::mutex indexLock;
   bool built;
-  
+
+  ThreadPool tp_rss;
+  ThreadPool tp_articles;
 /**
  * Constructor: NewsAggregator
  * ---------------------------
@@ -71,11 +78,13 @@ class NewsAggregator {
 /**
  * Method: processAllFeeds
  * -----------------------
- * Downloads all of the feeds and news articles to build the index.
- * You need to implement this function using two ThreadPools instead
- * of an unbounded number of threads.
+ * Spawns the recursive tree of threads needed to download all articles.
+ * You need to implement this function.
  */
   void processAllFeeds();
+
+  void processFeed(const std::string& feedURL, std::unordered_set<std::string> &visitedURLs, std::mutex &urls_lock);
+  void processArticle(const Article& article);
 
 /**
  * Copy Constructor, Assignment Operator
