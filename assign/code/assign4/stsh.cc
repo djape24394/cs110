@@ -139,6 +139,11 @@ void waitForegroundJob()
   {
     sigsuspend(&empty);
   }
+  // stsh takes back control over terminal
+  if(tcsetpgrp(STDIN_FILENO, getpgid(0)) == -1)
+  {
+    throw STSHException("Shell failed to retrieve the terminal.");
+  }
   cout << "Joblist when there are no more foreground jobs:" << endl << joblist;
 }
 
@@ -152,6 +157,13 @@ void continueJob(size_t job_number, STSHJobState state)
   STSHJob &job = joblist.getJob(job_number);
   job.setState(state);  
   pid_t group_id = job.getGroupID();
+  if(state == STSHJobState::kForeground)
+  {
+    if(tcsetpgrp(STDIN_FILENO, group_id) == -1)
+    {
+      throw STSHException("Faild to give terminal control to the process returning from background/stopped state");
+    }
+  }
   killpg(group_id, SIGCONT);
   
   if(state == STSHJobState::kForeground)
@@ -247,12 +259,20 @@ static void createJob(const pipeline& p) {
   if(pid == 0)
   {
     setpgid(0, pgid);
-    unblockSignal(SIGCHLD);
-    unblockSignal(SIGTSTP);
-    unblockSignal(SIGINT);
+    if(pgid == 0 && job.getState() == STSHJobState::kForeground)
+    {
+      if(tcsetpgrp(STDIN_FILENO, getpgid(0)) == -1)
+      {
+        throw STSHException("Faild to give terminal to the foreground job");
+      }
+    }
     installSignalHandler(SIGCHLD, SIG_DFL);
     installSignalHandler(SIGTSTP, SIG_DFL);
     installSignalHandler(SIGINT, SIG_DFL);
+    unblockSignal(SIGCHLD);
+    unblockSignal(SIGTSTP);
+    unblockSignal(SIGINT);
+
     execvp(argv[0], argv);
     // if we step in this line, something went wrong, execvp should never return.
     throw STSHException("Failed to invoke /bin/sh to execute the supplied command.");
