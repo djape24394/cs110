@@ -33,7 +33,7 @@ class HTMLDocument {
  *
  * If any problems are encountered, an HTMLDocumentException is thrown.
  */
-  void parse() throw (HTMLDocumentException);
+  void parse();
 
 /**
  * Method: getURL

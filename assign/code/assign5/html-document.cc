@@ -26,7 +26,7 @@ static const int kHTMLParseFlags =
   HTML_PARSE_NOBLANKS | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING | HTML_PARSE_NONET;
 static const string kDelimiters = " \t\n\r\b!@#$%^&*()_-+=~`{[}]|\\\"':;<,>.?/";
 
-void HTMLDocument::parse() throw (HTMLDocumentException) {
+void HTMLDocument::parse() {
   htmlDocPtr doc = htmlReadFile(url.c_str(), /* encoding = */ NULL, kHTMLParseFlags);
   if (doc == NULL) {
     // This is the only real user error we handle with any frequency, as it's

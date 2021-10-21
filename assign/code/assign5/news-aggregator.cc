@@ -10,6 +10,7 @@
 #include <getopt.h>
 #include <libxml/parser.h>
 #include <libxml/catalog.h>
+#include <unordered_set>
 // you will almost certainly need to add more system header includes
 
 // I'm not giving away too much detail here by leaking the #includes below,
@@ -62,7 +63,7 @@ NewsAggregator *NewsAggregator::createNewsAggregator(int argc, char *argv[]) {
   }
   
   argc -= optind;
-  if (argc > 0) NewsAggregatorLog::printUsage("Too many arguments.", argv[0]);
+  if (argc > 0) NewsAggregatorLog::printUsage("Too many arguments.", argv[0]); 
   return new NewsAggregator(rssFeedListURI, verbose);
 }
 
@@ -149,4 +150,60 @@ NewsAggregator::NewsAggregator(const string& rssFeedListURI, bool verbose):
  * outlined in the spec.
  */
 
-void NewsAggregator::processAllFeeds() {}
+void NewsAggregator::processAllFeeds() 
+{
+  RSSFeedList rssFeedList(rssFeedListURI);
+  try
+  {
+    rssFeedList.parse();
+  }
+  catch(const RSSFeedListException& e)
+  {
+    log.noteFullRSSFeedListDownloadFailureAndExit(rssFeedListURI);
+  }
+  
+  // where the keys are the links, and the values are the titles
+  const std::map<url, title>& feeds = rssFeedList.getFeeds();
+  
+  unordered_set<string> visitedURLs;
+
+  for(const auto& [feedURL, feedTitle]: feeds)
+  {
+    if(visitedURLs.find(feedURL) == visitedURLs.end())
+    {
+      visitedURLs.insert(feedURL);
+      try
+      {
+        RSSFeed rssFeed(feedURL);
+        log.noteSingleFeedDownloadBeginning(feedURL);
+        rssFeed.parse();
+        const std::vector<Article>& rssFeedArticles = rssFeed.getArticles();
+        for(const Article& article: rssFeedArticles)
+        {
+          if(visitedURLs.find(article.url) == visitedURLs.end())
+          {
+            visitedURLs.insert(article.url);
+            try{
+              log.noteSingleArticleDownloadBeginning(article);
+              HTMLDocument htmlDocument(article.url);
+              htmlDocument.parse();
+              const std::vector<std::string>& articleTokens = htmlDocument.getTokens();
+              index.add(article, articleTokens);
+              log.noteFullRSSFeedListDownloadEnd();
+            }
+            catch(const HTMLDocumentException& e)
+            {
+              log.noteSingleArticleDownloadFailure(article);
+            }
+          }
+        }
+        log.noteSingleFeedDownloadEnd(feedURL);
+      }
+      catch(const RSSFeedException& e)
+      {
+        log.noteSingleFeedDownloadFailure(feedURL);
+      }
+    }
+  }
+  index.finalizeIndex();
+}
