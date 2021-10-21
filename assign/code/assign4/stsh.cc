@@ -69,6 +69,7 @@ static void installSignalHandlers() {
  */
 static void createJob(const pipeline& p) {
   const command& cmnd = p.commands[0];
+  // create arguments for process on stack
   char array_chars[kMaxArguments + 2][kMaxCommandLength + 1] = {'\0'};
   char *argv[kMaxArguments + 2] = {NULL};
   strcpy(array_chars[0], cmnd.command);
@@ -85,8 +86,15 @@ static void createJob(const pipeline& p) {
     // if we step in this line, something went wrong, execvp should never return.
     throw STSHException("Failed to invoke /bin/sh to execute the supplied command.");
   }
+  STSHJob& job = joblist.addJob(kForeground);
+  job.addProcess(STSHProcess(pid, cmnd, kRunning));
+  cout << "Joblist after adding process:" << endl << joblist;
   waitpid(pid, NULL, 0);
-  /* STSHJob& job = */ joblist.addJob(kForeground);
+  STSHProcess& process = job.getProcess(pid);
+  process.setState(STSHProcessState::kTerminated);
+  cout << "Joblist before syncrhonize:" << endl << joblist;
+  joblist.synchronize(job);
+  cout << "Joblist before return:" << endl << joblist;
 }
 
 /**
