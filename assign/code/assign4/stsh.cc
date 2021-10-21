@@ -237,7 +237,7 @@ static void createJob(const pipeline& p) {
   blockSignal(SIGCHLD);
   blockSignal(SIGTSTP);
   blockSignal(SIGINT);
- 
+
   STSHJob& job = joblist.addJob(STSHJobState::kForeground);
   if(p.background)
   {
@@ -261,7 +261,7 @@ static void createJob(const pipeline& p) {
     }
 
     // prepare a pipe
-    if(nof_commands > 1 && i < nof_commands - 1)
+    if(nof_commands > 1 && (i < nof_commands - 1))
     {
       pipe2(&pipes[i][0], O_CLOEXEC);
     }
@@ -273,14 +273,14 @@ static void createJob(const pipeline& p) {
     {
       setpgid(0, pgid);
       // give control of terminal
-      if(pgid == 0 && job.getState() == STSHJobState::kForeground)
+      if((pgid == 0) && (job.getState() == STSHJobState::kForeground))
       {
         if(tcsetpgrp(STDIN_FILENO, getpgid(0)) == -1)
         {
           throw STSHException("Faild to give terminal to the foreground job");
         }
       }
-      // set pipes
+      // set pipes between processes
       if(nof_commands > 1)
       {
         if(i > 0)
@@ -292,6 +292,28 @@ static void createJob(const pipeline& p) {
           dup2(pipes[i][1], STDOUT_FILENO);
         }
       }
+
+      // setup redirection to the input file
+      if(i == 0 && !p.input.empty())
+      {
+        int fd = open(p.input.c_str(), O_RDONLY);
+        if(fd == -1)
+        {
+         throw STSHException("Failed to open the input file: " + p.input);  
+        }
+        dup2(fd, STDIN_FILENO);
+        close(fd);
+      }
+
+      // setup redirection to ouput file
+      if(i == nof_commands - 1 && !p.output.empty())
+      {
+        int fd = open(p.output.c_str(), O_CLOEXEC | O_CREAT|O_WRONLY|O_TRUNC, 0644);
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+      }
+
+      // reset signal handlers to default
       installSignalHandler(SIGCHLD, SIG_DFL);
       installSignalHandler(SIGTSTP, SIG_DFL);
       installSignalHandler(SIGINT, SIG_DFL);
