@@ -76,7 +76,7 @@ void handle_SIGSTP_and_SIGINT(int sig_num)
     STSHJob& job = joblist.getForegroundJob();
     pid_t goup_pid = job.getGroupID();
     killpg(goup_pid, sig_num);
-    std::cout << ((sig_num == SIGINT) ? "SIGINT came" : "SIGSTP came") << std::endl;
+    // std::cout << ((sig_num == SIGINT) ? "SIGINT came" : "SIGSTP came") << std::endl;
   }
 }
 
@@ -86,28 +86,28 @@ void handle_SIGCHLD(int unused)
   while(true)
   {
     int status;
-    std::cout << "before wait" << std::endl;
+    // std::cout << "before wait" << std::endl;
     pid_t pid = waitpid(-1, &status, WNOHANG | WCONTINUED | WUNTRACED);
-    std::cout << "after wait, pid==" << pid << std::endl;
+    // std::cout << "after wait, pid==" << pid << std::endl;
     if(pid <= 0) break;
     STSHJob& job = joblist.getJobWithProcess(pid);
     STSHProcess &process = job.getProcess(pid);
     if(WIFEXITED(status)) 
     {
-      std::cout << "EXITED" << std::endl;
+      // std::cout << "EXITED" << std::endl;
       process.setState(STSHProcessState::kTerminated);
     }
     else if(WIFSIGNALED(status))
     {
-      std::cout << "SIGNALED exit" << std::endl;
+      // std::cout << "SIGNALED exit" << std::endl;
       process.setState(STSHProcessState::kTerminated);
     }else if(WIFSTOPPED(status))
     {
-      std::cout << "STOPPED" << std::endl;
+      // std::cout << "STOPPED" << std::endl;
       process.setState(STSHProcessState::kStopped);
     }else if(WIFCONTINUED(status))
     {
-      std::cout << "CONTINUED" << std::endl;
+      // std::cout << "CONTINUED" << std::endl;
       process.setState(STSHProcessState::kRunning);
     }
     joblist.synchronize(job);
@@ -144,7 +144,7 @@ void waitForegroundJob()
   {
     throw STSHException("Shell failed to retrieve the terminal.");
   }
-  cout << "Joblist when there are no more foreground jobs:" << endl << joblist;
+  // cout << "Joblist when there are no more foreground jobs:" << endl << joblist;
 }
 
 void continueJob(size_t job_number, STSHJobState state)
@@ -234,51 +234,88 @@ void printJobSummary(const STSHJob &job)
  * Creates a new job on behalf of the provided pipeline.
  */
 static void createJob(const pipeline& p) {
-  const command& cmnd = p.commands[0];
-  // create arguments for process on stack
-  char array_chars[kMaxArguments + 2][kMaxCommandLength + 1] = {'\0'};
-  char *argv[kMaxArguments + 2] = {NULL};
-  strcpy(array_chars[0], cmnd.command);
-  argv[0] = array_chars[0];
-  for(size_t i = 1; (i < kMaxArguments + 2) && (cmnd.tokens[i - 1] != NULL); i++)
-  {
-    strcpy(array_chars[i], cmnd.tokens[i - 1]);
-    argv[i] = array_chars[i];
-  }
   blockSignal(SIGCHLD);
   blockSignal(SIGTSTP);
   blockSignal(SIGINT);
+ 
   STSHJob& job = joblist.addJob(STSHJobState::kForeground);
   if(p.background)
   {
     job.setState(STSHJobState::kBackground);
   }
-  // get process group ID, if there are no processes it returns 0, which is intended.
-  pid_t pgid = job.getGroupID();
-  pid_t pid = fork();
-  if(pid == 0)
-  {
-    setpgid(0, pgid);
-    if(pgid == 0 && job.getState() == STSHJobState::kForeground)
-    {
-      if(tcsetpgrp(STDIN_FILENO, getpgid(0)) == -1)
-      {
-        throw STSHException("Faild to give terminal to the foreground job");
-      }
-    }
-    installSignalHandler(SIGCHLD, SIG_DFL);
-    installSignalHandler(SIGTSTP, SIG_DFL);
-    installSignalHandler(SIGINT, SIG_DFL);
-    unblockSignal(SIGCHLD);
-    unblockSignal(SIGTSTP);
-    unblockSignal(SIGINT);
 
-    execvp(argv[0], argv);
-    // if we step in this line, something went wrong, execvp should never return.
-    throw STSHException("Failed to invoke /bin/sh to execute the supplied command.");
+  size_t nof_commands = p.commands.size();
+  vector<array<int, 2>> pipes(nof_commands - 1);
+  for(size_t i = 0; i < nof_commands; i++)
+  {
+    const command& cmnd = p.commands[i];
+    // create arguments for process on stack
+    char array_chars[kMaxArguments + 2][kMaxCommandLength + 1] = {'\0'};
+    char *argv[kMaxArguments + 2] = {NULL};
+    strcpy(array_chars[0], cmnd.command);
+    argv[0] = array_chars[0];
+    for(size_t i = 1; (i < kMaxArguments + 2) && (cmnd.tokens[i - 1] != NULL); i++)
+    {
+      strcpy(array_chars[i], cmnd.tokens[i - 1]);
+      argv[i] = array_chars[i];
+    }
+
+    // prepare a pipe
+    if(nof_commands > 1 && i < nof_commands - 1)
+    {
+      pipe2(&pipes[i][0], O_CLOEXEC);
+    }
+
+    // get process group ID, if there are no processes it returns 0, which is intended.
+    pid_t pgid = job.getGroupID();
+    pid_t pid = fork();
+    if(pid == 0)
+    {
+      setpgid(0, pgid);
+      // give control of terminal
+      if(pgid == 0 && job.getState() == STSHJobState::kForeground)
+      {
+        if(tcsetpgrp(STDIN_FILENO, getpgid(0)) == -1)
+        {
+          throw STSHException("Faild to give terminal to the foreground job");
+        }
+      }
+      // set pipes
+      if(nof_commands > 1)
+      {
+        if(i > 0)
+        {
+          dup2(pipes[i - 1][0], STDIN_FILENO);
+        }
+        if(i < nof_commands - 1)
+        {
+          dup2(pipes[i][1], STDOUT_FILENO);
+        }
+      }
+      installSignalHandler(SIGCHLD, SIG_DFL);
+      installSignalHandler(SIGTSTP, SIG_DFL);
+      installSignalHandler(SIGINT, SIG_DFL);
+      unblockSignal(SIGCHLD);
+      unblockSignal(SIGTSTP);
+      unblockSignal(SIGINT);
+
+      execvp(argv[0], argv);
+      // if we step in this line, something went wrong, execvp should never return.
+      throw STSHException("Failed to invoke /bin/sh to execute the supplied command.");
+    }
+    // prepare a pipe
+
+    setpgid(pid, pgid);
+    job.addProcess(STSHProcess(pid, cmnd, kRunning));
   }
-  setpgid(pid, pgid);
-  job.addProcess(STSHProcess(pid, cmnd, kRunning));
+
+  // close pipes from shell process
+  for(auto& pipe: pipes)
+  {
+    close(pipe[0]);
+    close(pipe[1]);
+  }
+  
   // cout << "Joblist after adding process:" << endl << joblist;
   if(job.getState() == STSHJobState::kForeground)
   {
