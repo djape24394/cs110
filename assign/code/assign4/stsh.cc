@@ -68,6 +68,8 @@ static void installSignalHandlers() {
  * Creates a new job on behalf of the provided pipeline.
  */
 static void createJob(const pipeline& p) {
+  STSHJob& job = joblist.addJob(kForeground);
+  
   const command& cmnd = p.commands[0];
   // create arguments for process on stack
   char array_chars[kMaxArguments + 2][kMaxCommandLength + 1] = {'\0'};
@@ -79,14 +81,17 @@ static void createJob(const pipeline& p) {
     strcpy(array_chars[i], cmnd.tokens[i - 1]);
     argv[i] = array_chars[i];
   }
+  // get process group ID, if there are no processes it returns 0, which is intended.
+  pid_t pgid = job.getGroupID();
   pid_t pid = fork();
   if(pid == 0)
   {
+    setpgid(0, pgid);
     execvp(argv[0], argv);
     // if we step in this line, something went wrong, execvp should never return.
     throw STSHException("Failed to invoke /bin/sh to execute the supplied command.");
   }
-  STSHJob& job = joblist.addJob(kForeground);
+  setpgid(pid, pgid);
   job.addProcess(STSHProcess(pid, cmnd, kRunning));
   cout << "Joblist after adding process:" << endl << joblist;
   waitpid(pid, NULL, 0);
