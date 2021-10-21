@@ -68,7 +68,24 @@ static void installSignalHandlers() {
  * Creates a new job on behalf of the provided pipeline.
  */
 static void createJob(const pipeline& p) {
-  cout << p; // remove this line once you get started
+  const command& cmnd = p.commands[0];
+  char array_chars[kMaxArguments + 2][kMaxCommandLength + 1] = {'\0'};
+  char *argv[kMaxArguments + 2] = {NULL};
+  strcpy(array_chars[0], cmnd.command);
+  argv[0] = array_chars[0];
+  for(size_t i = 1; (i < kMaxArguments + 2) && (cmnd.tokens[i - 1] != NULL); i++)
+  {
+    strcpy(array_chars[i], cmnd.tokens[i - 1]);
+    argv[i] = array_chars[i];
+  }
+  pid_t pid = fork();
+  if(pid == 0)
+  {
+    execvp(argv[0], argv);
+    // if we step in this line, something went wrong, execvp should never return.
+    throw STSHException("Failed to invoke /bin/sh to execute the supplied command.");
+  }
+  waitpid(pid, NULL, 0);
   /* STSHJob& job = */ joblist.addJob(kForeground);
 }
 
