@@ -11,6 +11,7 @@
 #include <libxml/parser.h>
 #include <libxml/catalog.h>
 #include <unordered_set>
+#include <thread>
 // you will almost certainly need to add more system header includes
 
 // I'm not giving away too much detail here by leaking the #includes below,
@@ -136,7 +137,7 @@ void NewsAggregator::queryIndex() const {
  * of the class definition.
  */
 NewsAggregator::NewsAggregator(const string& rssFeedListURI, bool verbose): 
-  log(verbose), rssFeedListURI(rssFeedListURI), built(false) {}
+  log(verbose), rssFeedListURI(rssFeedListURI), built(false), newsFeedThreadPermits(8), articleThreadPermits(24){}
 
 /**
  * Private Method: processAllFeeds
@@ -161,49 +162,115 @@ void NewsAggregator::processAllFeeds()
   {
     log.noteFullRSSFeedListDownloadFailureAndExit(rssFeedListURI);
   }
-  
+  log.noteFullRSSFeedListDownloadEnd();
+  vector<thread> threads;
   // where the keys are the links, and the values are the titles
   const std::map<url, title>& feeds = rssFeedList.getFeeds();
   
   unordered_set<string> visitedURLs;
+  mutex urls_lock;
 
   for(const auto& [feedURL, feedTitle]: feeds)
   {
-    if(visitedURLs.find(feedURL) == visitedURLs.end())
+    bool visited = false;
     {
-      visitedURLs.insert(feedURL);
-      try
+      scoped_lock<mutex> lg(urls_lock);
+      if(visitedURLs.find(feedURL) == visitedURLs.end())
       {
-        RSSFeed rssFeed(feedURL);
-        log.noteSingleFeedDownloadBeginning(feedURL);
-        rssFeed.parse();
-        const std::vector<Article>& rssFeedArticles = rssFeed.getArticles();
-        for(const Article& article: rssFeedArticles)
-        {
-          if(visitedURLs.find(article.url) == visitedURLs.end())
-          {
-            visitedURLs.insert(article.url);
-            try{
-              log.noteSingleArticleDownloadBeginning(article);
-              HTMLDocument htmlDocument(article.url);
-              htmlDocument.parse();
-              const std::vector<std::string>& articleTokens = htmlDocument.getTokens();
-              index.add(article, articleTokens);
-              log.noteFullRSSFeedListDownloadEnd();
-            }
-            catch(const HTMLDocumentException& e)
-            {
-              log.noteSingleArticleDownloadFailure(article);
-            }
-          }
-        }
-        log.noteSingleFeedDownloadEnd(feedURL);
-      }
-      catch(const RSSFeedException& e)
+        visitedURLs.insert(feedURL);
+      }else
       {
-        log.noteSingleFeedDownloadFailure(feedURL);
+        visited = true;
       }
     }
+
+    if(!visited)
+    {
+      newsFeedThreadPermits.wait();
+      threads.push_back(thread([this](string url, unordered_set<string> &visitedURLs, mutex &urls_lock){
+        processFeed(url, visitedURLs, urls_lock);
+        newsFeedThreadPermits.signal(on_thread_exit);
+      }, feedURL, ref(visitedURLs), ref(urls_lock)));
+    }
+  }
+  for(thread& thrd: threads)
+  {
+    thrd.join();
   }
   index.finalizeIndex();
+  log.noteAllRSSFeedsDownloadEnd();
+}
+
+void NewsAggregator::processFeed(const string& feedURL, unordered_set<string> &visitedURLs, mutex &urls_lock)
+{
+  try
+  {
+    RSSFeed rssFeed(feedURL);
+    log.noteSingleFeedDownloadBeginning(feedURL);
+    rssFeed.parse();
+    const std::vector<Article>& rssFeedArticles = rssFeed.getArticles();
+    vector<thread> threads;
+    for(const Article& article: rssFeedArticles)
+    {
+      bool visited = false;
+      {
+        lock_guard<mutex> lg(urls_lock);
+        if(visitedURLs.find(article.url) == visitedURLs.end())
+        {
+          visitedURLs.insert(article.url);
+        }
+        else
+        {
+          visited = true;
+        }
+      }
+
+      if(!visited)
+      {
+        string serverUrl = getURLServer(article.url);
+        {
+          scoped_lock<mutex> lg(serverPermitsLock);
+          if(serverThreadPermits.find(serverUrl) == serverThreadPermits.end())
+          {
+            serverThreadPermits[serverUrl] = make_unique<semaphore>(10);
+          }
+        }
+        serverThreadPermits[serverUrl]->wait();
+        articleThreadPermits.wait();
+        threads.push_back(thread([this](Article article){
+          processArticle(article);
+          articleThreadPermits.signal(on_thread_exit);
+          serverThreadPermits[getURLServer(article.url)]->signal(on_thread_exit);
+        }, article));
+      }
+    }
+    for(thread& thrd: threads)
+    {
+      thrd.join();
+    }
+    log.noteSingleFeedDownloadEnd(feedURL);
+  }
+  catch(const RSSFeedException& e)
+  {
+    log.noteSingleFeedDownloadFailure(feedURL);
+  }
+} 
+
+
+void NewsAggregator::processArticle(const Article& article)
+{
+  try{
+    log.noteSingleArticleDownloadBeginning(article);
+    HTMLDocument htmlDocument(article.url);
+    htmlDocument.parse();
+    const std::vector<std::string>& articleTokens = htmlDocument.getTokens();
+    {
+      std::lock_guard<mutex> lg(indexLock);
+      index.add(article, articleTokens);
+    }
+  }
+  catch(const HTMLDocumentException& e)
+  {
+    log.noteSingleArticleDownloadFailure(article);
+  }
 }

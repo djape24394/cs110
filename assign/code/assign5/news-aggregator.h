@@ -9,8 +9,10 @@
 
 #pragma once
 #include <string>
+#include <unordered_set>
 #include "log.h"
 #include "rss-index.h"
+#include "semaphore.h"
 
 class NewsAggregator {
   
@@ -59,7 +61,14 @@ class NewsAggregator {
   NewsAggregatorLog log;
   std::string rssFeedListURI;
   RSSIndex index;
+  std::mutex indexLock;
   bool built;
+
+  semaphore newsFeedThreadPermits;
+  semaphore articleThreadPermits;
+
+  std::map<server, std::unique_ptr<semaphore>>  serverThreadPermits;
+  std::mutex serverPermitsLock;
   
 /**
  * Constructor: NewsAggregator
@@ -76,6 +85,9 @@ class NewsAggregator {
  * You need to implement this function.
  */
   void processAllFeeds();
+
+  void processFeed(const std::string& feedURL, std::unordered_set<std::string> &visitedURLs, std::mutex &urls_lock);
+  void processArticle(const Article& article);
 
 /**
  * Copy Constructor, Assignment Operator
