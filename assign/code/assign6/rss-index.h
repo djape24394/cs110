@@ -9,6 +9,7 @@
 #pragma once
 #include <map>
 #include <vector>
+#include <utility>
 #include "article.h"
 
 class RSSIndex {
@@ -27,6 +28,11 @@ class RSSIndex {
   void add(const Article& article, const std::vector<std::string>& words);
 
 /**
+ * Finalize object indexing, getMatchingArticles should not be called before this call.
+ */
+void finalizeIndex();
+
+/**
  * Returns a reference to the list of documents associated with the specified
  * word.  The list is a vector of URL/frequency pairs, sorted by frequency from
  * high to low (and alphabetically for those with the same frequence counts.)
@@ -35,6 +41,8 @@ class RSSIndex {
   
  private:
   std::map<std::string, std::map<Article, int> > index;
+  std::map<std::pair<std::string, std::string>, std::vector<std::string>> words_map;
+  std::map<std::pair<std::string, std::string>, std::string> lexic_smallest_url;
 
 /**
  * RSSIndex instances can theoretically store a huge amount of data, so we

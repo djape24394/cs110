@@ -15,9 +15,9 @@
 #include <sys/types.h> // used to count the number of threads
 #include <unistd.h>    // used to count the number of threads
 #include <dirent.h>    // for opendir, readdir, closedir
+#include <thread>
 
 #include "thread-pool.h"
-#include "thread-utils.h"
 #include "ostreamlock.h"
 using namespace std;
 
@@ -26,14 +26,14 @@ static void singleThreadNoWaitTest() {
   pool.schedule([] {
     cout << "This is a test." << endl;
   });
-  sleep_for(1000); // emulate wait without actually calling wait (that's a different test)
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // emulate wait without actually calling wait (that's a different test)
 }
 
 static void singleThreadSingleWaitTest() {
   ThreadPool pool(4);
   pool.schedule([] {
     cout << "This is a test." << endl;
-    sleep_for(1000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   });
 }
 
@@ -48,13 +48,13 @@ static void reuseThreadPoolTest() {
   for (size_t i = 0; i < 16; i++) {
     pool.schedule([] {
       cout << "This is a test." << endl;
-      sleep_for(50);
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
     });
   }
   pool.wait();
   pool.schedule([] {
     cout << "This is a code." << endl;
-    sleep_for(1000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }); 
   pool.wait();
 }

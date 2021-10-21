@@ -2,7 +2,7 @@
 
 PROGS = aggregate tptest
 EXTRA_PROGS = tpcustomtest
-CXX = /usr/bin/g++-5
+CXX = /usr/bin/g++
 
 NA_LIB_SRC = news-aggregator.cc \
 	     log.cc \
@@ -18,10 +18,10 @@ TP_LIB_SRC = thread-pool.cc
 WARNINGS = -Wall -pedantic
 DEPS = -MMD -MF $(@:.o=.d)
 DEFINES = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD
-INCLUDES = -I/afs/ir/class/cs110/local/include -I/usr/include/libxml2
+INCLUDES = -I/usr/local/include -I/usr/include/libxml2
 
 CXXFLAGS = -g $(WARNINGS) -O0 -std=c++14 $(DEPS) $(DEFINES) $(INCLUDES)
-LDFLAGS = -lm -lxml2 -L/afs/ir/class/cs110/local/lib -lrand -lthreads -pthread
+LDFLAGS = -lm -lxml2 -L/usr/local/lib -pthread -lboost_system -lboost_thread
 
 NA_LIB_OBJ = $(patsubst %.cc,%.o,$(patsubst %.S,%.o,$(NA_LIB_SRC)))
 NA_LIB_DEP = $(patsubst %.o,%.d,$(NA_LIB_OBJ))
