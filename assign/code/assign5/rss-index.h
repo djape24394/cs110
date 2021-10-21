@@ -9,6 +9,7 @@
 #pragma once
 #include <map>
 #include <vector>
+#include <utility>
 #include "article.h"
 
 class RSSIndex {
@@ -39,10 +40,9 @@ void finalizeIndex();
   std::vector<std::pair<Article, int> > getMatchingArticles(const std::string& word) const;
   
  private:
-  using ArticleServerUrl = Article;
   std::map<std::string, std::map<Article, int> > index;
-  std::map<ArticleServerUrl, std::vector<std::string>> words_map;
-  std::map<ArticleServerUrl, std::string> lexic_smallest_url;
+  std::map<std::pair<std::string, std::string>, std::vector<std::string>> words_map;
+  std::map<std::pair<std::string, std::string>, std::string> lexic_smallest_url;
 
 /**
  * RSSIndex instances can theoretically store a huge amount of data, so we

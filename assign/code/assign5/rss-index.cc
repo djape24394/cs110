@@ -4,56 +4,47 @@
  * Presents the implementation of the RSSIndex class, which is
  * little more than a glorified map.
  */
-
+#include <algorithm>
 #include "rss-index.h"
 #include "utils.h"
-
-#include <algorithm>
 
 using namespace std;
 
 void RSSIndex::add(const Article& article, const vector<string>& words) {
-  ArticleServerUrl article_server_url;
-  article_server_url.url = getURLServer(article.url);
-  article_server_url.title = article.title;
-
-  auto words_cpy = words;
+  
+  pair<string, string> servUrlAndTitle{getURLServer(article.url), article.title};
+  vector<string> words_cpy(words);
   sort(words_cpy.begin(), words_cpy.end());
-  if(words_map.find(article_server_url) == words_map.end())
+  if(words_map.find(servUrlAndTitle) == words_map.end())
   {
-    words_map[article_server_url] = std::move(words_cpy);
-    lexic_smallest_url[article_server_url] = article.url;
+    words_map[servUrlAndTitle] = std::move(words_cpy);
+    lexic_smallest_url[servUrlAndTitle] = article.url;
   }else
   {
     vector<string> intersection_words;
-    std::set_intersection(words_map[article_server_url].cbegin(), words_map[article_server_url].cend(), 
+    std::set_intersection(words_map[servUrlAndTitle].cbegin(), words_map[servUrlAndTitle].cend(), 
                           words_cpy.cbegin(), words_cpy.cend(), back_inserter(intersection_words));
-    words_map[article_server_url] = intersection_words;
-    if(article.url < lexic_smallest_url[article_server_url])
+    words_map[servUrlAndTitle] = intersection_words;
+    if(article.url < lexic_smallest_url[servUrlAndTitle])
     {
-      lexic_smallest_url[article_server_url] = article.url;
-    }
+      lexic_smallest_url[servUrlAndTitle] = article.url;
+    } 
   }
-
-  // for(const string& word: words)
-  // {
-  //   index[word][article]++;
-  // }
 }
 
 void RSSIndex::finalizeIndex()
 {
-  for(const auto& [article_server_url, words]: words_map)
+  for(const auto& [servUrlAndTitle, words]: words_map)
   {
     Article article;
-    article.url = lexic_smallest_url[article_server_url];
-    article.title = article_server_url.title;
+    article.url = lexic_smallest_url[servUrlAndTitle];
+    article.title = servUrlAndTitle.second;
     for(const string& word: words)
     {
       index[word][article]++;
     }
   }
-  // clear memory for lexic_smallest_url and words_map
+  // // clear memory for lexic_smallest_url and words_map
   words_map.clear();
   lexic_smallest_url.clear();
 }
