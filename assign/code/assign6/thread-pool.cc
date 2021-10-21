@@ -7,8 +7,14 @@
 #include "thread-pool.h"
 using namespace std;
 
-ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), nofAvailableWorkers(numThreads)
+ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), nofAvailableWorkers(numThreads), availableWorkers(numThreads, true)
 {
+    for(size_t i = 0; i < numThreads; i++)
+    {
+        wt_thunks.emplace_back(nullptr);
+        wt_semaphores.emplace_back(make_unique<semaphore>(0));
+    }
+
     // launch dispatcher
     dt = thread([this]()
                 { dispatcher(); });
@@ -18,12 +24,6 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), nofAvailableWorkers
     {
         wts[workerID] = thread([this, workerID]()
                                { worker(workerID); });
-    }
-
-    for(size_t i = 0; i < numThreads; i++)
-    {
-        wt_thunks.emplace_back(nullptr);
-        wt_semaphores.emplace_back(make_unique<semaphore>(0));
     }
 }
 void ThreadPool::schedule(const Thunk &thunk) 

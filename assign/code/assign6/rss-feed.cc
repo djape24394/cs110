@@ -23,7 +23,7 @@ using namespace std;
 
 static const int XML_PARSE_FLAGS = XML_PARSE_NOBLANKS | XML_PARSE_NOERROR | XML_PARSE_NOWARNING;
 
-void RSSFeed::parse() throw (RSSFeedException) {
+void RSSFeed::parse(){
   xmlDocPtr doc = xmlReadFile(url.c_str(), /* encoding = */ NULL, XML_PARSE_FLAGS);
   if (doc == NULL) {
     // This is the only real user error we handle with any frequency, as it's

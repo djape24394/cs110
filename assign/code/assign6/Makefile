@@ -20,7 +20,7 @@ DEPS = -MMD -MF $(@:.o=.d)
 DEFINES = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD
 INCLUDES = -I/usr/local/include -I/usr/include/libxml2
 
-CXXFLAGS = -g $(WARNINGS) -O0 -std=c++14 $(DEPS) $(DEFINES) $(INCLUDES)
+CXXFLAGS = -g $(WARNINGS) -O0 -std=c++17 $(DEPS) $(DEFINES) $(INCLUDES)
 LDFLAGS = -lm -lxml2 -L/usr/local/lib -pthread -lboost_system -lboost_thread
 
 NA_LIB_OBJ = $(patsubst %.cc,%.o,$(patsubst %.S,%.o,$(NA_LIB_SRC)))

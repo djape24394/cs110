@@ -32,7 +32,7 @@ class RSSFeed {
  *
  * If any problems are encountered, and RSSFeedException is thrown.
  */
-  void parse() throw (RSSFeedException);
+  void parse();
 
 /**
  * Method: getArticles
