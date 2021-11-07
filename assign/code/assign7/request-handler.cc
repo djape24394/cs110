@@ -12,6 +12,11 @@
 #include <socket++/sockstream.h> // for sockbuf, iosockstream
 using namespace std;
 
+HTTPRequestHandler::HTTPRequestHandler()
+{
+  blackList.addToBlacklist("blocked-domains.txt");
+}
+
 void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection){
   sockbuf sb(connection.first);
   iosockstream ss(&sb);
@@ -20,6 +25,16 @@ void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection){
   request.ingestHeader(ss, connection.second);
   request.ingestPayload(ss);
   std::cout << "Servicing request from the client: " << connection.second << "\n";
+  if(!blackList.serverIsAllowed(request.getServer()))
+  {
+    HTTPResponse response;
+    response.setProtocol("HTTP/1.0");
+    response.setResponseCode(403);
+    response.setPayload("Forbidden Content");
+    ss << response;
+    ss.flush();
+    return;
+  }
   std::cout << "Connection to server: " << request.getServer() << ":" << request.getPort() << "\n";
   int cs = createClientSocket(request.getServer(), request.getPort());
   if(cs == kClientSocketError)
