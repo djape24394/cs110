@@ -79,6 +79,13 @@ std::ostream& operator<<(std::ostream& os, const HTTPHeader& hh) {
   return os;
 }
 
+void HTTPHeader::extendHeaderWithSeparator(const std::string& name, const string& value, const string& separator)
+{
+  string normalizedName = toLowerCase(name);
+  if(containsName(normalizedName)) headers[normalizedName] += separator;
+  headers[normalizedName] += value;
+}
+
 /** Private methods **/
 
 void HTTPHeader::extendHeader(const string& name, const string& value) {

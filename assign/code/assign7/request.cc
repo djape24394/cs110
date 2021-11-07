@@ -44,6 +44,9 @@ void HTTPRequest::ingestRequestLine(istream& instream) throw (HTTPBadRequestExce
 
 void HTTPRequest::ingestHeader(istream& instream, const string& clientIPAddress) {
   requestHeader.ingestHeader(instream);
+    // V1, add x-forwarded-proto and extend x-forwarded-for
+  requestHeader.addHeader("x-forwarded-proto", "http");
+  requestHeader.extendHeaderWithSeparator("x-forwarded-for", clientIPAddress, ",");
 }
 
 bool HTTPRequest::containsName(const string& name) const {

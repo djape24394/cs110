@@ -50,6 +50,8 @@ class HTTPHeader {
  */
   void removeHeader(const std::string& name);
 
+  void extendHeaderWithSeparator(const std::string& name, const std::string& value, const std::string& separator = " ");
+
 /**
  * Returns true if and only if the collection of name-value pairs
  * includes the one provided.  Note that the name comparison is
