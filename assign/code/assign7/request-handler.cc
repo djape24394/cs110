@@ -25,9 +25,9 @@ void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection){
   request.ingestHeader(ss, connection.second);
   request.ingestPayload(ss);
   std::cout << "Servicing request from the client: " << connection.second << "\n";
+  HTTPResponse response;
   if(!blackList.serverIsAllowed(request.getServer()))
   {
-    HTTPResponse response;
     response.setProtocol("HTTP/1.0");
     response.setResponseCode(403);
     response.setPayload("Forbidden Content");
@@ -35,25 +35,28 @@ void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection){
     ss.flush();
     return;
   }
-  std::cout << "Connection to server: " << request.getServer() << ":" << request.getPort() << "\n";
-  int cs = createClientSocket(request.getServer(), request.getPort());
-  if(cs == kClientSocketError)
+  if(!cache.containsCacheEntry(request, response))
   {
-    throw HTTPBadRequestException("Error connecting to the server " + request.getServer()  + "\n");
+    std::cout << "Connection to server: " << request.getServer() << ":" << request.getPort() << "\n";
+    int cs = createClientSocket(request.getServer(), request.getPort());
+    if(cs == kClientSocketError)
+    {
+      throw HTTPBadRequestException("Error connecting to the server " + request.getServer()  + "\n");
+    }
+    std::cout << "Connection to server OK\n";
+    sockbuf server_buf(cs);
+    iosockstream server_socket_stream(&server_buf);
+    std::cout << "Sending request:\n";
+    server_socket_stream << request;
+    server_socket_stream.flush();
+    std::cout << "Following request sent:\n";
+    std::cout << request << "check return line\n";
+    std::cout << "Ingesting response...\n";
+    response.ingestResponseHeader(server_socket_stream);
+    if(request.getMethod() != "HEAD")response.ingestPayload(server_socket_stream);
+    std::cout << "Got response:\n";
+    if(cache.shouldCache(request, response)) cache.cacheEntry(request, response);
   }
-  std::cout << "Connection to server OK\n";
-  sockbuf server_buf(cs);
-  iosockstream server_socket_stream(&server_buf);
-  std::cout << "Sending request:\n";
-  server_socket_stream << request;
-  server_socket_stream.flush();
-  std::cout << "Following request sent:\n";
-  std::cout << request << "check return line\n";
-  HTTPResponse response;
-  std::cout << "Ingesting response...\n";
-  response.ingestResponseHeader(server_socket_stream);
-  if(request.getMethod() != "HEAD")response.ingestPayload(server_socket_stream);
-  std::cout << "Got response:\n";
   ss << response;
   ss.flush();
   std::cout << response << "\n";
