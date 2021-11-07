@@ -16,7 +16,7 @@ class HTTPProxyScheduler {
   void setProxy(const std::string& server, unsigned short port);
   void clearCache() { requestHandler.clearCache(); }
   void setCacheMaxAge(long maxAge) { requestHandler.setCacheMaxAge(maxAge); }
-  void scheduleRequest(int clientfd, const std::string& clientIPAddr) throw ();
+  void scheduleRequest(int clientfd, const std::string& clientIPAddr);
   
  private:
   HTTPRequestHandler requestHandler;

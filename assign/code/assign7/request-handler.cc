@@ -12,7 +12,7 @@
 #include <socket++/sockstream.h> // for sockbuf, iosockstream
 using namespace std;
 
-void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection) throw() {
+void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection){
   sockbuf sb(connection.first);
   iosockstream ss(&sb);
   HTTPRequest request;
@@ -24,7 +24,7 @@ void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection) thr
   int cs = createClientSocket(request.getServer(), request.getPort());
   if(cs == kClientSocketError)
   {
-    throw HTTPBadRequestException("Error connecting to the server\n");
+    throw HTTPBadRequestException("Error connecting to the server " + request.getServer()  + "\n");
   }
   std::cout << "Connection to server OK\n";
   sockbuf server_buf(cs);
@@ -37,7 +37,7 @@ void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection) thr
   HTTPResponse response;
   std::cout << "Ingesting response...\n";
   response.ingestResponseHeader(server_socket_stream);
-  response.ingestPayload(server_socket_stream);
+  if(request.getMethod() != "HEAD")response.ingestPayload(server_socket_stream);
   std::cout << "Got response:\n";
   ss << response;
   ss.flush();

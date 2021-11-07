@@ -13,7 +13,7 @@
 
 class HTTPRequestHandler {
  public:
-  void serviceRequest(const std::pair<int, std::string>& connection) throw();
+  void serviceRequest(const std::pair<int, std::string>& connection);
   void clearCache();
   void setCacheMaxAge(long maxAge);
 };
