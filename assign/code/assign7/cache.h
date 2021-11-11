@@ -11,6 +11,8 @@
 #include <string>
 #include <mutex>
 #include <sys/time.h>
+#include <array>
+#include <memory>
 #include "request.h"
 #include "response.h"
 
@@ -30,7 +32,7 @@ class HTTPCache {
   bool containsCacheEntry(const HTTPRequest& request, HTTPResponse& response) const;
   bool shouldCache(const HTTPRequest& request, const HTTPResponse& response) const;
   void cacheEntry(const HTTPRequest& request, const HTTPResponse& response);
-
+  std::mutex& get_request_mutex(const HTTPRequest &request);
 /**
  * Clears the cache of all entries.
  */
@@ -58,7 +60,8 @@ class HTTPCache {
   void extractCreateAndExpireTimes(const std::string& cachedFileName, time_t& createTime, time_t& expirationTime) const;
   bool cachedEntryIsValid(const std::string& cachedFileName) const;
   std::string getHostname() const;
-
+  static constexpr int nof_mutexes{997};
+  std::array<std::unique_ptr<std::mutex>, nof_mutexes> mutexes;
   long maxAge;
   std::string cacheDirectory;
 };

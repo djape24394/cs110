@@ -39,6 +39,10 @@ using namespace std;
 HTTPCache::HTTPCache(): maxAge(-1) {
   cacheDirectory = getCacheDirectory();
   ensureDirectoryExists(cacheDirectory);
+  for(size_t i = 0; i < nof_mutexes; i++)
+  {
+    mutexes[i] = make_unique<mutex>();
+  }
 }
 
 static const string kCacheSubdirectoryPrefix = ".proxy-cache";
@@ -125,6 +129,11 @@ void HTTPCache::cacheEntry(const HTTPRequest& request, const HTTPResponse& respo
     throw HTTPCacheAccessException("Unable to open the cache entry named \"" + cacheEntryName + "\" for writing.");
   outfile << response;
   outfile.flush();
+}
+
+mutex& HTTPCache::get_request_mutex(const HTTPRequest &request) {
+  size_t request_hash_id = hashRequest(request) % nof_mutexes;
+  return *mutexes[request_hash_id];
 }
 
 size_t HTTPCache::hashRequest(const HTTPRequest& request) const {

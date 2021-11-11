@@ -18,7 +18,7 @@ CXXFLAGS = -g -Wall -pedantic -O0 -std=c++14 -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX
 #  -pthread   link in libpthread (thread library) to back C++11 extensions (note -pthread and not -lpthread)
 #  -lthread   link to course-specific concurrency functions and classes
 #  -lsocket++ link to open source socket++ library, which layers iostream objects over sockets
-LDFLAGS = -lpthread -L/usr/include/socket++ -lsocket++ -Wl,-rpath=/usr/include/socket++
+LDFLAGS = -lpthread -L/usr/include -lboost_system -lboost_thread -L/usr/include/socket++ -lsocket++ -Wl,-rpath=/usr/include/socket++
 
 # The ARFLAGS variable, if absent, defaults to rv, but I don't want a verbose printout
 ARFLAGS = r
@@ -39,7 +39,8 @@ SOURCES = \
 	payload.cc \
 	cache.cc \
 	blacklist.cc \
-	client-socket.cc
+	client-socket.cc \
+	thread-pool.cc \
 
 HEADERS = $(SOURCES:.cc=.h)
 OBJECTS = $(SOURCES:.cc=.o)
