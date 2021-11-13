@@ -28,6 +28,8 @@ class HTTPRequest {
   
  public:
 
+  HTTPRequest(bool usingProxy):usingProxy(usingProxy){}
+
 /**
  * Ingests, parses, and stores the first line of the HTTP request.
  * Recall that the first line of any valid proxied HTTP request is
@@ -61,7 +63,7 @@ class HTTPRequest {
  * a new name.  Instead, the line (after being right-trimmed) is providing a continuation 
  * of the previous line's value.
  */
-  void ingestHeader(std::istream& instream, const std::string& clientIPAddress);
+  bool ingestHeader(std::istream& instream, const std::string& clientIPAddress);
 
 /**
  * Ingests everything after the blank line following the header.
@@ -102,6 +104,8 @@ class HTTPRequest {
   unsigned short port;
   std::string path;
   std::string protocol;
+
+  bool usingProxy;
 };
 
 #endif

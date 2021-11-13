@@ -13,7 +13,7 @@
 #include <socket++/sockstream.h> // for sockbuf, iosockstream
 using namespace std;
 
-HTTPRequestHandler::HTTPRequestHandler()
+HTTPRequestHandler::HTTPRequestHandler(): usingProxy{false}
 {
   blackList.addToBlacklist("blocked-domains.txt");
 }
@@ -21,12 +21,21 @@ HTTPRequestHandler::HTTPRequestHandler()
 void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection){
   sockbuf sb(connection.first);
   iosockstream ss(&sb);
-  HTTPRequest request;
+  HTTPRequest request(usingProxy);
   request.ingestRequestLine(ss);
-  request.ingestHeader(ss, connection.second);
+  bool is_chained_proxy = request.ingestHeader(ss, connection.second);
   request.ingestPayload(ss);
   std::cout << oslock << "Servicing request from the client: " << connection.second << "\n" << osunlock;
   HTTPResponse response;
+  if(is_chained_proxy)
+  {
+    response.setProtocol("HTTP/1.0");
+    response.setResponseCode(504);
+    response.setPayload("Proxy cycle detected.");
+    ss << response;
+    ss.flush();
+    return;
+  }
   if(!blackList.serverIsAllowed(request.getServer()))
   {
     response.setProtocol("HTTP/1.0");
@@ -40,11 +49,24 @@ void HTTPRequestHandler::serviceRequest(const pair<int, string>& connection){
   lock_guard<mutex> lg(request_mutex);
   if(!cache.containsCacheEntry(request, response))
   {
-    std::cout << oslock << "Connection to server: " << request.getServer() << ":" << request.getPort() << "\n" << osunlock;
-    int cs = createClientSocket(request.getServer(), request.getPort());
-    if(cs == kClientSocketError)
+    int cs{-1};
+    if(!usingProxy)
     {
-      throw HTTPBadRequestException("Error connecting to the server " + request.getServer()  + "\n");
+      std::cout << oslock << "Connection to server: " << request.getServer() << ":" << request.getPort() << "\n" << osunlock;
+      cs = createClientSocket(request.getServer(), request.getPort());
+      if(cs == kClientSocketError)
+      {
+        throw HTTPBadRequestException("Error connecting to the server " + request.getServer()  + "\n");
+      }
+    }
+    else
+    {
+      std::cout << oslock << "Connection to proxy: " << proxyServer << ":" << proxyPortNumber << "\n" << osunlock;
+      cs = createClientSocket(proxyServer, proxyPortNumber);
+      if(cs == kClientSocketError)
+      {
+        throw HTTPBadRequestException("Cannot forward request to specified next proxy  " + request.getServer()  + "\n");
+      }
     }
     std::cout << oslock << "Connection to server OK\n" << osunlock;
     sockbuf server_buf(cs);
@@ -72,4 +94,10 @@ void HTTPRequestHandler::clearCache() {
 }
 void HTTPRequestHandler::setCacheMaxAge(long maxAge) {
   cache.setMaxAge(maxAge);
+}
+
+void HTTPRequestHandler::setProxy(const std::string& server, unsigned short port){
+  usingProxy = true;
+  proxyServer = server;
+  proxyPortNumber = port;
 }

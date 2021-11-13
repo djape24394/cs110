@@ -23,3 +23,8 @@ void HTTPProxyScheduler::scheduleRequest(int clientfd, const string& clientIPAdd
     }
   });
 }
+
+void HTTPProxyScheduler::setProxy(const std::string& server, unsigned short port)
+{
+  requestHandler.setProxy(server, port);
+}

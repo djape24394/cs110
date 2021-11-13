@@ -42,11 +42,14 @@ void HTTPRequest::ingestRequestLine(istream& instream) throw (HTTPBadRequestExce
   server.erase(pos);
 }
 
-void HTTPRequest::ingestHeader(istream& instream, const string& clientIPAddress) {
+bool HTTPRequest::ingestHeader(istream& instream, const string& clientIPAddress) {
   requestHeader.ingestHeader(instream);
     // V1, add x-forwarded-proto and extend x-forwarded-for
   requestHeader.addHeader("x-forwarded-proto", "http");
+  string x_forwarded_for = requestHeader.getValueAsString("x-forwarded-for");
+  if(x_forwarded_for.find(clientIPAddress) != string::npos) return true;
   requestHeader.extendHeaderWithSeparator("x-forwarded-for", clientIPAddress, ",");
+  return false;
 }
 
 bool HTTPRequest::containsName(const string& name) const {
@@ -60,7 +63,14 @@ void HTTPRequest::ingestPayload(istream& instream) {
 
 ostream& operator<<(ostream& os, const HTTPRequest& rh) {
   const string& path = rh.path;
-  os << rh.method << " " << path << " " << rh.protocol << "\r\n";
+  if(rh.usingProxy)
+  {
+    os << rh.requestLine << "\r\n";
+  }
+  else
+  {
+    os << rh.method << " " << path << " " << rh.protocol << "\r\n";
+  }
   os << rh.requestHeader;
   os << "\r\n"; // blank line not printed by request header
   os << rh.payload;
